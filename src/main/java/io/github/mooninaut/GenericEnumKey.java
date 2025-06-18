@@ -4,8 +4,9 @@ import java.io.InputStream;
 import java.io.PrintStream;
 import java.util.List;
 import java.util.RandomAccess;
+import java.util.stream.Collectors;
 
-public enum GenericEnumKey implements GenericKey { // cursed raw type
+public enum GenericEnumKey implements GenericKey /* cursed: raw type */ {
     _STRING(String.class),
     _INTEGER(Integer.class),
     _DOUBLE(Double.class),
@@ -13,7 +14,7 @@ public enum GenericEnumKey implements GenericKey { // cursed raw type
     _OUT(PrintStream.class),
     _ERR(PrintStream.class),
     _IN(InputStream.class),
-    _FLOATS(List.class, List.of(RandomAccess.class)),
+    _FLOATS_RANDOM_ACCESS(List.class, List.of(RandomAccess.class)),
     ;
 
     private final Class<?> aClass;
@@ -39,30 +40,44 @@ public enum GenericEnumKey implements GenericKey { // cursed raw type
     }
 
     @Override
-    public boolean typeCheck(final Object o) {
-        final boolean result = aClass.isInstance(o);
-        if (!result || extraInterfaces == null) {
-            return result;
+    public Class<?> isInstance(final Object o) {
+        if (o == null) {
+            return null;
+        }
+        if (!aClass.isInstance(o)) {
+            return aClass;
+        }
+        if (extraInterfaces == null) {
+            return null;
         }
         for (final var interfaceClass : extraInterfaces) {
             if (!interfaceClass.isInstance(o)) {
-                return false;
+                return interfaceClass;
             }
         }
-        return true;
+        return null;
     }
 
     @Override
     public Object cast(final Object o) {
-        if (typeCheck(o)) {
+        final Class<?> failedClass = isInstance(o);
+        if (failedClass == null) {
             return o;
         }
-        throw new IllegalArgumentException("Failed type check for " + keyName() + ": " + o.getClass());
+        throw new ClassCastException("Key " + keyName() + " rejected value of type " + o.getClass().getName() +
+                ": Does not " + (failedClass.isInterface() ? "implement interface " : "extend class ") + failedClass.getName());
     }
 
     @Override
     public String keyName() {
-        return name() + '(' + aClass.getSimpleName() + ')';
+        if (extraInterfaces == null) {
+            return name() + '(' + aClass.getSimpleName() + ')';
+        }
+        return extraInterfaces.stream()
+                .map(Class::getSimpleName)
+                .collect(Collectors.joining(",",
+                        name() + '(' + aClass.getSimpleName() + ",",
+                        ")"));
     }
 
     @Override
@@ -70,43 +85,64 @@ public enum GenericEnumKey implements GenericKey { // cursed raw type
         return "GenericEnumKey{" + keyName() + '}';
     }
 
-    public <T, KEY extends Enum<GenericEnumKey> & GenericKey<T>> KEY typeCheck(Class<T> tClass) {
+    private <T, KEY extends Enum<GenericEnumKey> & GenericKey<T>> KEY typeAssert(final Class<T> tClass) {
         if (tClass == aClass) {
-            return (KEY) this; // unchecked but safe
+            return (KEY) this; // cursed: unchecked cast
+        }
+        throw new IllegalArgumentException("Class " + tClass.getName() + " incorrect for " + keyName());
+    }
+
+    // Since there are no generic class literals, enum constants whose type
+    // parameter is itself generic have to have that parameter erased in order
+    // to perform the raw type check.
+    private <T> T rawTypeAssert(final Class<?> /* cursed: wildcard type */ tClass) {
+        if (tClass == aClass) {
+            return (T) this; // cursed: unchecked cast
         }
         throw new IllegalArgumentException("Class " + tClass.getName() + " incorrect for " + keyName());
     }
 
     // cursed accessors
+
+    // Each (cursed) accessor returns a value with a non-reifiable but statically
+    // and (as far as erasure allows) dynamically correct type, which can only
+    // be inhabited by an enum constant of this class with the correct raw base
+    // type.
+
     public static <T extends Enum<GenericEnumKey> & GenericKey<String>> T STRING() {
-        return GenericEnumKey._STRING.typeCheck(String.class);
+        return GenericEnumKey._STRING.typeAssert(String.class);
     }
     public static <T extends Enum<GenericEnumKey> & GenericKey<Integer>> T INTEGER() {
-        return GenericEnumKey._INTEGER.typeCheck(Integer.class);
+        return GenericEnumKey._INTEGER.typeAssert(Integer.class);
     }
     public static <T extends Enum<GenericEnumKey> & GenericKey<Double>> T DOUBLE() {
-        return GenericEnumKey._DOUBLE.typeCheck(Double.class);
+        return GenericEnumKey._DOUBLE.typeAssert(Double.class);
     }
 
     // Demonstrates that this pattern supports distinct keys of the same type,
     // unlike the one in Effective Java that uses a map of Class objects to values.
 
     // On the other hand, this pattern only supports a fixed set of enum values, rather
-    // than objects of any class.
+    // than objects of any class. This may be beneficial, depending on the use case.
     public static <T extends Enum<GenericEnumKey> & GenericKey<Double>> T OTHER_DOUBLE() {
-        return GenericEnumKey._OTHER_DOUBLE.typeCheck(Double.class);
+        return GenericEnumKey._OTHER_DOUBLE.typeAssert(Double.class);
     }
     public static <T extends Enum<GenericEnumKey> & GenericKey<PrintStream>> T OUT() {
-        return GenericEnumKey._OUT.typeCheck(PrintStream.class);
+        return GenericEnumKey._OUT.typeAssert(PrintStream.class);
     }
     public static <T extends Enum<GenericEnumKey> & GenericKey<PrintStream>> T ERR() {
-        return GenericEnumKey._ERR.typeCheck(PrintStream.class);
+        return GenericEnumKey._ERR.typeAssert(PrintStream.class);
     }
     public static <T extends Enum<GenericEnumKey> & GenericKey<InputStream>> T IN() {
-        return GenericEnumKey._IN.typeCheck(InputStream.class);
+        return GenericEnumKey._IN.typeAssert(InputStream.class);
     }
-    public static <L extends List<Float> & RandomAccess,
-            T extends Enum<GenericEnumKey> & GenericKey<L>> T FLOATS_RANDOM_ACCESS() {
-        return GenericEnumKey._FLOATS.typeCheck((Class<L>) (Class) List.class);
+
+    // Has to use rawTypeAssert to avoid an even more cursed unchecked raw cast:
+    // (Class<L>) (Class) List.class
+    public static
+    <T extends Enum<GenericEnumKey> & GenericKey<L>,
+     L extends List<Float> & RandomAccess>
+    T FLOATS_RANDOM_ACCESS() {
+        return GenericEnumKey._FLOATS_RANDOM_ACCESS.rawTypeAssert(List.class);
     }
 }

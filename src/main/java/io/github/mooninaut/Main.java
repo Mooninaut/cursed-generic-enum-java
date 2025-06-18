@@ -44,5 +44,11 @@ public final class Main {
 
         assert floats instanceof RandomAccess;
         assert floats instanceof List;
+
+        try {
+            FLOATS_RANDOM_ACCESS().cast(new LinkedList<>());
+        } catch (final ClassCastException cce) {
+            map.get(ERR()).println(cce.getMessage());
+        }
     }
 }

@@ -7,7 +7,7 @@ public sealed interface GenericKey<T> permits GenericEnumKey {
 
     List<Class<?>> extraInterfaces();
 
-    boolean typeCheck(T t);
+    Class<?> isInstance(T t);
 
     T cast(Object o);
 
