@@ -3,11 +3,11 @@ package io.github.mooninaut;
 import java.util.List;
 
 public sealed interface GenericKey<T> permits GenericEnumKey {
-    Class<T> keyType();
+    Class<T> baseClass();
 
-    List<Class<?>> extraInterfaces();
+    List<Class<?>> interfaces();
 
-    Class<?> isInstance(T t);
+    boolean isInstance(T t);
 
     T cast(Object o);
 

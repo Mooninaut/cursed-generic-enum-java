@@ -2,8 +2,7 @@ package io.github.mooninaut;
 
 import java.io.InputStream;
 import java.io.PrintStream;
-import java.util.List;
-import java.util.RandomAccess;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public enum GenericEnumKey implements GenericKey /* cursed: raw type */ {
@@ -14,43 +13,61 @@ public enum GenericEnumKey implements GenericKey /* cursed: raw type */ {
     _OUT(PrintStream.class),
     _ERR(PrintStream.class),
     _IN(InputStream.class),
-    _FLOATS_RANDOM_ACCESS(List.class, List.of(RandomAccess.class)),
+    _FLOATS_RANDOM_ACCESS(List.class, RandomAccess.class),
     ;
 
-    private final Class<?> aClass;
-    private final List<Class<?>> extraInterfaces;
+    private final Class<?> baseClass;
+    private final Class<?>[] interfaces;
 
-    GenericEnumKey(final Class<?> aClass) {
-        this(aClass, null);
+    GenericEnumKey(Class<?> baseClass) {
+        this(baseClass, new Class[0]);
     }
 
-    GenericEnumKey(final Class<?> aClass, final List<Class<?>> extraInterfaces) {
-        this.aClass = aClass;
-        this.extraInterfaces = extraInterfaces;
+    GenericEnumKey(final Class<?> baseClass, Class<?> ...interfaces) {
+        this.baseClass = baseClass;
+        this.interfaces = validateInterfaces(interfaces);
+    }
+
+    private static Class<?>[] validateInterfaces(final Class<?> ...interfacesToCheck) {
+        for (Class<?> interfaceToCheck : interfacesToCheck) {
+            if (!interfaceToCheck.isInterface()) {
+                throw new IllegalArgumentException("Not an interface: " + interfaceToCheck);
+            }
+        }
+        return interfacesToCheck;
     }
 
     @Override
-    public Class<?> keyType() {
-        return aClass;
+    public Class<?> baseClass() {
+        return baseClass;
     }
 
     @Override
-    public List<Class<?>> extraInterfaces() {
-        return extraInterfaces;
+    public List<Class<?>> interfaces() {
+        return List.of(interfaces);
     }
 
     @Override
-    public Class<?> isInstance(final Object o) {
+    public boolean isInstance(final Object o) {
+        return checkInstance(o) == null;
+    }
+
+    /**
+     * @return The first class or interface that `o` does not extend or
+     *         implement, or null if it properly extends or implements
+     *         all classes and interfaces this key requires.
+     */
+    private Class<?> checkInstance(final Object o) {
         if (o == null) {
             return null;
         }
-        if (!aClass.isInstance(o)) {
-            return aClass;
+        if (!baseClass.isInstance(o)) {
+            return baseClass;
         }
-        if (extraInterfaces == null) {
+        if (interfaces == null) {
             return null;
         }
-        for (final var interfaceClass : extraInterfaces) {
+        for (final var interfaceClass : interfaces) {
             if (!interfaceClass.isInstance(o)) {
                 return interfaceClass;
             }
@@ -60,23 +77,25 @@ public enum GenericEnumKey implements GenericKey /* cursed: raw type */ {
 
     @Override
     public Object cast(final Object o) {
-        final Class<?> failedClass = isInstance(o);
+        final Class<?> failedClass = checkInstance(o);
         if (failedClass == null) {
             return o;
         }
-        throw new ClassCastException("Key " + keyName() + " rejected value of type " + o.getClass().getName() +
-                ": Does not " + (failedClass.isInterface() ? "implement interface " : "extend class ") + failedClass.getName());
+        throw new ClassCastException("Key " + keyName() + " rejected value of type " +
+                o.getClass().getName() + ": Does not " +
+                (failedClass.isInterface() ? "implement interface " : "extend class ") +
+                failedClass.getName());
     }
 
     @Override
     public String keyName() {
-        if (extraInterfaces == null) {
-            return name() + '(' + aClass.getSimpleName() + ')';
+        if (interfaces == null) {
+            return name() + '(' + baseClass.getSimpleName() + ')';
         }
-        return extraInterfaces.stream()
+        return Arrays.stream(interfaces)
                 .map(Class::getSimpleName)
                 .collect(Collectors.joining(",",
-                        name() + '(' + aClass.getSimpleName() + ",",
+                        name() + '(' + baseClass.getSimpleName() + ",",
                         ")"));
     }
 
@@ -85,8 +104,9 @@ public enum GenericEnumKey implements GenericKey /* cursed: raw type */ {
         return "GenericEnumKey{" + keyName() + '}';
     }
 
-    private <T, KEY extends Enum<GenericEnumKey> & GenericKey<T>> KEY typeAssert(final Class<T> tClass) {
-        if (tClass == aClass) {
+    private <T, KEY extends Enum<GenericEnumKey> & GenericKey<T>>
+    KEY typeAssert(final Class<T> tClass) {
+        if (tClass == baseClass) {
             return (KEY) this; // cursed: unchecked cast
         }
         throw new IllegalArgumentException("Class " + tClass.getName() + " incorrect for " + keyName());
@@ -96,7 +116,7 @@ public enum GenericEnumKey implements GenericKey /* cursed: raw type */ {
     // parameter is itself generic have to have that parameter erased in order
     // to perform the raw type check.
     private <T> T rawTypeAssert(final Class<?> /* cursed: wildcard type */ tClass) {
-        if (tClass == aClass) {
+        if (tClass == baseClass) {
             return (T) this; // cursed: unchecked cast
         }
         throw new IllegalArgumentException("Class " + tClass.getName() + " incorrect for " + keyName());
@@ -109,13 +129,18 @@ public enum GenericEnumKey implements GenericKey /* cursed: raw type */ {
     // be inhabited by an enum constant of this class with the correct raw base
     // type.
 
-    public static <T extends Enum<GenericEnumKey> & GenericKey<String>> T STRING() {
+    public static <T extends Enum<GenericEnumKey> & GenericKey<String>>
+    T STRING() {
         return GenericEnumKey._STRING.typeAssert(String.class);
     }
-    public static <T extends Enum<GenericEnumKey> & GenericKey<Integer>> T INTEGER() {
+
+    public static <T extends Enum<GenericEnumKey> & GenericKey<Integer>>
+    T INTEGER() {
         return GenericEnumKey._INTEGER.typeAssert(Integer.class);
     }
-    public static <T extends Enum<GenericEnumKey> & GenericKey<Double>> T DOUBLE() {
+
+    public static <T extends Enum<GenericEnumKey> & GenericKey<Double>>
+    T DOUBLE() {
         return GenericEnumKey._DOUBLE.typeAssert(Double.class);
     }
 
@@ -124,24 +149,30 @@ public enum GenericEnumKey implements GenericKey /* cursed: raw type */ {
 
     // On the other hand, this pattern only supports a fixed set of enum values, rather
     // than objects of any class. This may be beneficial, depending on the use case.
-    public static <T extends Enum<GenericEnumKey> & GenericKey<Double>> T OTHER_DOUBLE() {
+    public static <T extends Enum<GenericEnumKey> & GenericKey<Double>>
+    T OTHER_DOUBLE() {
         return GenericEnumKey._OTHER_DOUBLE.typeAssert(Double.class);
     }
-    public static <T extends Enum<GenericEnumKey> & GenericKey<PrintStream>> T OUT() {
+
+    public static <T extends Enum<GenericEnumKey> & GenericKey<PrintStream>>
+    T OUT() {
         return GenericEnumKey._OUT.typeAssert(PrintStream.class);
     }
-    public static <T extends Enum<GenericEnumKey> & GenericKey<PrintStream>> T ERR() {
+
+    public static <T extends Enum<GenericEnumKey> & GenericKey<PrintStream>>
+    T ERR() {
         return GenericEnumKey._ERR.typeAssert(PrintStream.class);
     }
-    public static <T extends Enum<GenericEnumKey> & GenericKey<InputStream>> T IN() {
+
+    public static <T extends Enum<GenericEnumKey> & GenericKey<InputStream>>
+    T IN() {
         return GenericEnumKey._IN.typeAssert(InputStream.class);
     }
 
     // Has to use rawTypeAssert to avoid an even more cursed unchecked raw cast:
     // (Class<L>) (Class) List.class
-    public static
-    <T extends Enum<GenericEnumKey> & GenericKey<L>,
-     L extends List<Float> & RandomAccess>
+    public static <T extends Enum<GenericEnumKey> & GenericKey<L>,
+                   L extends List<Float> & RandomAccess>
     T FLOATS_RANDOM_ACCESS() {
         return GenericEnumKey._FLOATS_RANDOM_ACCESS.rawTypeAssert(List.class);
     }
