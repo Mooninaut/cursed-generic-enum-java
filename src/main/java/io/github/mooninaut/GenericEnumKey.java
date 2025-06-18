@@ -3,6 +3,7 @@ package io.github.mooninaut;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public enum GenericEnumKey implements GenericKey /* cursed: raw type */ {
@@ -14,6 +15,7 @@ public enum GenericEnumKey implements GenericKey /* cursed: raw type */ {
     _ERR(PrintStream.class),
     _IN(InputStream.class),
     _FLOATS_RANDOM_ACCESS(List.class, RandomAccess.class),
+    _OUT_PRINTLN(Consumer.class),
     ;
 
     private final Class<?> baseClass;
@@ -175,5 +177,12 @@ public enum GenericEnumKey implements GenericKey /* cursed: raw type */ {
                    L extends List<Float> & RandomAccess>
     T FLOATS_RANDOM_ACCESS() {
         return GenericEnumKey._FLOATS_RANDOM_ACCESS.rawTypeAssert(List.class);
+    }
+
+    // Has to use rawTypeAssert to avoid an even more cursed unchecked raw cast:
+    // (Class<Consumer<String>>) (Class) Consumer.class
+    public static <T extends Enum<GenericEnumKey> & GenericKey<Consumer<String>>>
+    T OUT_PRINTLN_STRING() {
+        return GenericEnumKey._OUT_PRINTLN.rawTypeAssert(Consumer.class);
     }
 }

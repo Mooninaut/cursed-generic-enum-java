@@ -11,5 +11,9 @@ public sealed interface GenericKey<T> permits GenericEnumKey {
 
     T cast(Object o);
 
+    default T coerceCast(final T t) {
+        return cast(t);
+    }
+
     String keyName();
 }
