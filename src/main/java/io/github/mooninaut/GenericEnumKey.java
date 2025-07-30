@@ -7,15 +7,15 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public enum GenericEnumKey implements GenericKey /* cursed: raw type */ {
-    _STRING(String.class),
-    _INTEGER(Integer.class),
-    _DOUBLE(Double.class),
-    _OTHER_DOUBLE(Double.class),
-    _OUT(PrintStream.class),
-    _ERR(PrintStream.class),
-    _IN(InputStream.class),
-    _FLOATS_RANDOM_ACCESS(List.class, RandomAccess.class),
-    _OUT_PRINTLN(Consumer.class),
+    STRING(String.class),
+    AN_INTEGER(Integer.class),
+    A_DOUBLE(Double.class),
+    ANOTHER_DOUBLE(Double.class),
+    OUT(PrintStream.class),
+    ERR(PrintStream.class),
+    IN(InputStream.class),
+    FLOATS_RANDOM_ACCESS(List.class, RandomAccess.class),
+    OUT_PRINTLN_STRING(Consumer.class),
     ;
 
     private final Class<?> baseClass;
@@ -114,8 +114,8 @@ public enum GenericEnumKey implements GenericKey /* cursed: raw type */ {
         throw new IllegalArgumentException("Class " + tClass.getName() + " incorrect for " + keyName());
     }
 
-    // Since there are no generic class literals, enum constants whose type
-    // parameter is itself generic have to have that parameter erased in order
+    // Since there are no generic class literals, an enum constant whose type
+    // parameter is itself generic has to have that parameter erased in order
     // to perform the raw type check.
     private <T> T rawTypeAssert(final Class<?> /* cursed: wildcard type */ tClass) {
         if (tClass == baseClass) {
@@ -132,18 +132,18 @@ public enum GenericEnumKey implements GenericKey /* cursed: raw type */ {
     // type.
 
     public static <T extends Enum<GenericEnumKey> & GenericKey<String>>
-    T STRING() {
-        return GenericEnumKey._STRING.typeAssert(String.class);
+    T string() {
+        return GenericEnumKey.STRING.typeAssert(String.class);
     }
 
     public static <T extends Enum<GenericEnumKey> & GenericKey<Integer>>
-    T INTEGER() {
-        return GenericEnumKey._INTEGER.typeAssert(Integer.class);
+    T anInteger() {
+        return GenericEnumKey.AN_INTEGER.typeAssert(Integer.class);
     }
 
     public static <T extends Enum<GenericEnumKey> & GenericKey<Double>>
-    T DOUBLE() {
-        return GenericEnumKey._DOUBLE.typeAssert(Double.class);
+    T aDouble() {
+        return GenericEnumKey.A_DOUBLE.typeAssert(Double.class);
     }
 
     // Demonstrates that this pattern supports distinct keys of the same type,
@@ -152,37 +152,37 @@ public enum GenericEnumKey implements GenericKey /* cursed: raw type */ {
     // On the other hand, this pattern only supports a fixed set of enum values, rather
     // than objects of any class. This may be beneficial, depending on the use case.
     public static <T extends Enum<GenericEnumKey> & GenericKey<Double>>
-    T OTHER_DOUBLE() {
-        return GenericEnumKey._OTHER_DOUBLE.typeAssert(Double.class);
+    T anotherDouble() {
+        return GenericEnumKey.ANOTHER_DOUBLE.typeAssert(Double.class);
     }
 
     public static <T extends Enum<GenericEnumKey> & GenericKey<PrintStream>>
-    T OUT() {
-        return GenericEnumKey._OUT.typeAssert(PrintStream.class);
+    T out() {
+        return GenericEnumKey.OUT.typeAssert(PrintStream.class);
     }
 
     public static <T extends Enum<GenericEnumKey> & GenericKey<PrintStream>>
-    T ERR() {
-        return GenericEnumKey._ERR.typeAssert(PrintStream.class);
+    T err() {
+        return GenericEnumKey.ERR.typeAssert(PrintStream.class);
     }
 
     public static <T extends Enum<GenericEnumKey> & GenericKey<InputStream>>
-    T IN() {
-        return GenericEnumKey._IN.typeAssert(InputStream.class);
+    T in() {
+        return GenericEnumKey.IN.typeAssert(InputStream.class);
     }
 
     // Has to use rawTypeAssert to avoid an even more cursed unchecked raw cast:
     // (Class<L>) (Class) List.class
     public static <T extends Enum<GenericEnumKey> & GenericKey<L>,
                    L extends List<Float> & RandomAccess>
-    T FLOATS_RANDOM_ACCESS() {
-        return GenericEnumKey._FLOATS_RANDOM_ACCESS.rawTypeAssert(List.class);
+    T floatsRandomAccess() {
+        return GenericEnumKey.FLOATS_RANDOM_ACCESS.rawTypeAssert(List.class);
     }
 
     // Has to use rawTypeAssert to avoid an even more cursed unchecked raw cast:
     // (Class<Consumer<String>>) (Class) Consumer.class
     public static <T extends Enum<GenericEnumKey> & GenericKey<Consumer<String>>>
-    T OUT_PRINTLN_STRING() {
-        return GenericEnumKey._OUT_PRINTLN.rawTypeAssert(Consumer.class);
+    T outPrintlnString() {
+        return GenericEnumKey.OUT_PRINTLN_STRING.rawTypeAssert(Consumer.class);
     }
 }

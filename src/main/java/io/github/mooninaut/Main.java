@@ -11,46 +11,46 @@ public final class Main {
     public static void main(String[] args) {
         final GenericMap map = new GenericEnumMap();
 
-        map.put(OUT(), System.out);
-        map.put(IN(), System.in);
-        map.put(ERR(), System.err);
-        map.put(OUT_PRINTLN_STRING(), System.out::println);
+        map.put(out(), System.out);
+        map.put(in(), System.in);
+        map.put(err(), System.err);
+        map.put(outPrintlnString(), System.out::println);
 
-        final var out = map.get(OUT());
+        final var out = map.get(out());
 
-        map.put(DOUBLE(), Math.PI);
-        map.put(INTEGER(), -8);
-        map.put(STRING(), "Hi there, %s!\n");
-        map.put(OTHER_DOUBLE(), Math.E);
+        map.put(aDouble(), Math.PI);
+        map.put(anInteger(), -8);
+        map.put(string(), "Hi there, %s!\n");
+        map.put(anotherDouble(), Math.E);
 
         out.println();
 
-        final Double pi = map.get(DOUBLE());
+        final Double pi = map.get(aDouble());
         out.println(Math.cos(pi));
-        final Integer i = map.get(INTEGER());
+        final Integer i = map.get(anInteger());
         out.println(Integer.signum(i));
-        final String format = map.get(STRING());
+        final String format = map.get(string());
         out.printf(format, "user");
-        final Double e = map.get(OTHER_DOUBLE());
+        final Double e = map.get(anotherDouble());
         out.println(Math.log(e));
 
-        final InputStream in = map.get(IN());
+        final InputStream in = map.get(in());
         out.println(in.markSupported());
 
-        map.put(FLOATS_RANDOM_ACCESS(), new ArrayList<>());
+        map.put(floatsRandomAccess(), new ArrayList<>());
 
-        final var floats = map.get(FLOATS_RANDOM_ACCESS());
+        final var floats = map.get(floatsRandomAccess());
 
         assert floats instanceof RandomAccess;
         assert floats instanceof List;
 
         try {
-            FLOATS_RANDOM_ACCESS().cast(new LinkedList<>());
+            floatsRandomAccess().cast(new LinkedList<>());
         } catch (final ClassCastException cce) {
-            map.get(ERR()).println(cce.getMessage());
+            map.get(err()).println(cce.getMessage());
         }
 
-        OUT_PRINTLN_STRING()
+        outPrintlnString()
                 .coerceCast(System.out::println).accept("Successful coerceCast");
 
         try {
@@ -58,10 +58,10 @@ public final class Main {
             final Consumer<String> stringConsumer = (Consumer<String>) unknownConsumer;
             // Erasure prevents checking the real type, only the raw type is
             // available at runtime
-            OUT_PRINTLN_STRING().coerceCast(stringConsumer)
+            outPrintlnString().coerceCast(stringConsumer)
                     .accept("Unsuccessful coerceCast");
         } catch (final ClassCastException cce) {
-            map.get(ERR()).println(cce.getMessage());
+            map.get(err()).println(cce.getMessage());
         }
     }
 }
